@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -37,15 +38,18 @@ func main() {
 		fmt.Println("waiting for data")
 		parts, err := commandSock.Recv()
 		checkError(err)
-		fmt.Println(parts)
+		joinedBytes := bytes.Join(parts, nil)
 
-		//joinedBytes := bytes.Join(parts, nil)
+		if len(joinedBytes) != 2 {
+			// This is a msgpack message
 
-		//var dec *codec.Decoder = codec.NewDecoderBytes(joinedBytes, h)
-		//err = dec.Decode(&v1)
-		//checkError(err)
-
-		//fmt.Println(v1)
+			//var dec *codec.Decoder = codec.NewDecoderBytes(joinedBytes, h)
+			//err = dec.Decode(&v1)
+			//checkError(err)
+			//fmt.Println(v1)
+		} else {
+			fmt.Println("received ", string(joinedBytes))
+		}
 
 		time.Sleep(time.Second * 1)
 	}
