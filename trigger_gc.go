@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ugorji/go/codec"
 	"github.com/vaughan0/go-zmq"
 )
 
@@ -14,9 +15,27 @@ func checkError(err error) {
 	}
 }
 
-var v1 string
+type HandshakeResponse struct {
+	EventType int     `codec:0`
+	Timestamp float64 `codec:1`
+	Payload   struct {
+		ServerVersion      string `codec:"rbkit_server_version"`
+		ProtocolVersion    string `codec:"rbkit_protocol_version"`
+		ProcessName        string `codec:"process_name"`
+		Pwd                string `codec:"pwd"`
+		Pid                int    `codec:"pid"`
+		ObjectTraceEnabled int    `codec:"object_trace_enabled"`
+	} `codec:2`
+}
+
+var h codec.MsgpackHandle
 
 func main() {
+	h.WriteExt = true
+	h.RawToString = true
+	//var msg map[int]interface{}
+	msg := HandshakeResponse{}
+
 	ctx, err := zmq.NewContext()
 	checkError(err)
 	defer ctx.Close()
@@ -31,7 +50,7 @@ func main() {
 
 	for {
 		fmt.Println("Triggerring GC")
-		err = commandSock.Send([][]byte{[]byte("trigger_gc")})
+		err = commandSock.Send([][]byte{[]byte("handshake")})
 		checkError(err)
 		fmt.Println("Triggerred GC")
 
@@ -42,11 +61,13 @@ func main() {
 
 		if len(joinedBytes) != 2 {
 			// This is a msgpack message
+			for _, part := range parts {
+				var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
+				err = dec.Decode(&msg)
+				checkError(err)
+				fmt.Println(msg)
+			}
 
-			//var dec *codec.Decoder = codec.NewDecoderBytes(joinedBytes, h)
-			//err = dec.Decode(&v1)
-			//checkError(err)
-			//fmt.Println(v1)
 		} else {
 			fmt.Println("received ", string(joinedBytes))
 		}
