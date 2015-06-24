@@ -12,7 +12,7 @@ import (
 type HandshakeResponse struct {
 	EventType int64
 	Timestamp float64
-	Payload   kandshakePayload
+	Payload   handshakePayload
 }
 
 type handshakePayload struct {
@@ -66,8 +66,7 @@ func main() {
 				err = dec.Decode(&msg)
 				checkError(err)
 				unpacked := unpackHandshake(msg)
-				fmt.Println(unpacked)
-				//printHandshakeInfo(msg)
+				unpacked.Print()
 			}
 		} else {
 			fmt.Println("received ", string(joinedBytes))
@@ -75,30 +74,6 @@ func main() {
 
 		time.Sleep(time.Second * 1)
 	}
-}
-
-func printHandshakeInfo(payload map[int]interface{}) {
-	// unpack the interface and convert the value to an int
-	timestamp := payload[1].(int64)
-	// unpack the payload interface and convert the value to map that can then
-	// be queried using the string keys for respective fields
-	payloadMap := payload[2].(map[interface{}]interface{})
-
-	fmt.Println("\n")
-	fmt.Println("Event Type: Handshake")
-	fmt.Println("Timestamp : ", time.Unix(int64(timestamp), 0))
-	fmt.Println("Rbkit Server Version: ", payloadMap["rbkit_server_version"])
-	fmt.Println("Rbkit Protocol Version: ", payloadMap["rbkit_protocol_version"])
-	fmt.Println("Process Name: ", payloadMap["process_name"])
-	fmt.Println("Working Directory: ", payloadMap["pwd"])
-	fmt.Println("Pid: ", payloadMap["pid"])
-
-	if payloadMap["object_trace_enabled"] == 0 {
-		fmt.Println("Object Trace Not Enabled")
-	} else {
-		fmt.Println("Object Trace Enabled")
-	}
-	fmt.Println("\n")
 }
 
 func unpackHandshake(payload map[int]interface{}) (response HandshakeResponse) {
@@ -127,4 +102,22 @@ func unpackHandshake(payload map[int]interface{}) (response HandshakeResponse) {
 	}
 
 	return
+}
+
+func (h HandshakeResponse) Print() {
+	fmt.Println("\n")
+	fmt.Println("Event Type: Handshake")
+	fmt.Println("Timestamp : ", time.Unix(int64(h.Timestamp), 0))
+	fmt.Println("Rbkit Server Version: ", h.Payload.ServerVersion)
+	fmt.Println("Rbkit Protocol Version: ", h.Payload.ProtocolVersion)
+	fmt.Println("Process Name: ", h.Payload.ProcessName)
+	fmt.Println("Working Directory: ", h.Payload.Pwd)
+	fmt.Println("Pid: ", h.Payload.Pid)
+
+	if h.Payload.ObjectTraceEnabled {
+		fmt.Println("Object Trace Enabled")
+	} else {
+		fmt.Println("Object Trace Not Enabled")
+	}
+	fmt.Println("\n")
 }
