@@ -2,8 +2,14 @@
 // separate thread
 package main
 
-import "fmt"
-import "github.com/code-mancers/rbkit-go/receiver"
+import (
+	"bytes"
+	"fmt"
+	"time"
+
+	"github.com/ugorji/go/codec"
+	"github.com/vaughan0/go-zmq"
+)
 
 var optionDict = map[int]string{
 	1: "start_memory_profile",
@@ -13,7 +19,13 @@ var optionDict = map[int]string{
 	5: "handshake",
 }
 
-func askForOption(option chan int) {
+func checkError(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func askForOption(option chan string) {
 	var input int
 	fmt.Println("Enter a selection for the command: ")
 	fmt.Println("1. Start Memory Profile")
@@ -23,25 +35,144 @@ func askForOption(option chan int) {
 	fmt.Println("5. Handshake")
 	fmt.Println("Hit Ctrl+C to stop")
 	fmt.Scanln(&input)
-	option <- input
-}
 
-func getOption(option chan int) {
-	enteredValue := <-option
-	if enteredValue < 1 || enteredValue > 5 {
-		fmt.Println("\nInvalid option\n\n")
+	if input > 0 && input < 6 {
+		option <- optionDict[input]
 	} else {
-		fmt.Printf("\nThe option you've selected is %d\n", enteredValue)
-		fmt.Printf("\nOr, in other words: %s\n\n", optionDict[enteredValue])
+		go askForOption(option)
+		fmt.Println("\nInvalid option\n\n")
 	}
 }
 
 func main() {
-	option := make(chan int)
+	var h codec.MsgpackHandle
+	h.WriteExt = true
+	h.RawToString = true
+	option := make(chan string)
+
+	ctx, err := zmq.NewContext()
+	checkError(err)
+	defer ctx.Close()
+
+	commandSock, err := ctx.Socket(zmq.Req)
+	checkError(err)
+	defer commandSock.Close()
+
+	err = commandSock.Connect("tcp://127.0.0.1:5556")
+	checkError(err)
+
 	// Repeatedly ask for an option
 	for {
+		var msg map[int]interface{}
+
 		go askForOption(option)
-		getOption(option)
-		receiver.Receive()
+		sendCommand(option, commandSock)
+
+		fmt.Println("waiting for data")
+		parts, err := commandSock.Recv()
+		checkError(err)
+		joinedBytes := bytes.Join(parts, nil)
+
+		if len(joinedBytes) != 2 {
+			// This is a msgpack message
+			for _, part := range parts {
+				var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
+				err = dec.Decode(&msg)
+				checkError(err)
+				unpacked := unpackHandshake(msg)
+				unpacked.Print()
+			}
+		} else {
+			fmt.Println("received ", string(joinedBytes))
+		}
 	}
+}
+
+func sendCommand(option chan string, commandSock *zmq.Socket) {
+	command := <-option
+	fmt.Println("sending command ", command)
+	err := commandSock.Send([][]byte{[]byte(command)})
+	checkError(err)
+	fmt.Println("sent command ", command)
+}
+
+type HandshakeResponse struct {
+	EventType int64
+	Timestamp float64
+	Payload   handshakePayload
+}
+
+type handshakePayload struct {
+	ServerVersion      string
+	ProtocolVersion    string
+	ProcessName        string
+	Pwd                string
+	Pid                uint64
+	ObjectTraceEnabled bool
+}
+
+func parseReponse(parts [][]byte, h codec.MsgpackHandle, msg map[int]interface{}) {
+	joinedBytes := bytes.Join(parts, nil)
+
+	if len(joinedBytes) != 2 {
+		// This is a msgpack message
+		for _, part := range parts {
+			var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
+			err := dec.Decode(&msg)
+			checkError(err)
+			unpacked := unpackHandshake(msg)
+			unpacked.Print()
+		}
+	} else {
+		fmt.Println("\n")
+		fmt.Println("received ", string(joinedBytes))
+		fmt.Println("\n")
+	}
+
+}
+
+func unpackHandshake(payload map[int]interface{}) (response HandshakeResponse) {
+	payloadMap := payload[2].(map[interface{}]interface{})
+	var objectTraceEnabled bool
+
+	if payloadMap["object_trace_enabled"].(int64) == 0 {
+		objectTraceEnabled = false
+	} else {
+		objectTraceEnabled = true
+	}
+
+	handshakePayloadObj := handshakePayload{
+		ServerVersion:      payloadMap["rbkit_server_version"].(string),
+		ProtocolVersion:    payloadMap["rbkit_protocol_version"].(string),
+		ProcessName:        payloadMap["process_name"].(string),
+		Pwd:                payloadMap["pwd"].(string),
+		Pid:                payloadMap["pid"].(uint64),
+		ObjectTraceEnabled: objectTraceEnabled,
+	}
+
+	response = HandshakeResponse{
+		EventType: payload[0].(int64),
+		Timestamp: payload[1].(float64),
+		Payload:   handshakePayloadObj,
+	}
+
+	return
+}
+
+func (h HandshakeResponse) Print() {
+	fmt.Println("\n")
+	fmt.Println("Event Type: Handshake")
+	fmt.Println("Timestamp : ", time.Unix(int64(h.Timestamp), 0))
+	fmt.Println("Rbkit Server Version: ", h.Payload.ServerVersion)
+	fmt.Println("Rbkit Protocol Version: ", h.Payload.ProtocolVersion)
+	fmt.Println("Process Name: ", h.Payload.ProcessName)
+	fmt.Println("Working Directory: ", h.Payload.Pwd)
+	fmt.Println("Pid: ", h.Payload.Pid)
+
+	if h.Payload.ObjectTraceEnabled {
+		fmt.Println("Object Trace Enabled")
+	} else {
+		fmt.Println("Object Trace Not Enabled")
+	}
+	fmt.Println("\n")
 }
