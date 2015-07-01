@@ -35,7 +35,6 @@ var h codec.MsgpackHandle
 func main() {
 	h.WriteExt = true
 	h.RawToString = true
-	var msg map[int]interface{}
 
 	ctx, err := zmq.NewContext()
 	checkError(err)
@@ -48,31 +47,50 @@ func main() {
 	err = commandSock.Connect("tcp://127.0.0.1:5556")
 	checkError(err)
 
+	chans := commandSock.Channels()
+	defer chans.Close()
+
+	// send the command once. Do this inside a go routine
+	sendCommand(chans)
+
 	for {
-		fmt.Println("Triggerring GC")
-		err = commandSock.Send([][]byte{[]byte("handshake")})
-		checkError(err)
-		fmt.Println("Triggerred GC")
-
-		fmt.Println("waiting for data")
-		parts, err := commandSock.Recv()
-		checkError(err)
-		joinedBytes := bytes.Join(parts, nil)
-
-		if len(joinedBytes) != 2 {
-			// This is a msgpack message
-			for _, part := range parts {
-				var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
-				err = dec.Decode(&msg)
-				checkError(err)
-				unpacked := unpackHandshake(msg)
-				unpacked.Print()
-			}
-		} else {
-			fmt.Println("received ", string(joinedBytes))
+		select {
+		case parts := <-chans.In():
+			go func() {
+				fmt.Println("Received response")
+				processIncomingMessage(parts)
+				sendCommand(chans)
+			}()
+		case err := <-chans.Errors():
+			checkError(err)
 		}
-
 		time.Sleep(time.Second * 1)
+	}
+}
+
+func sendCommand(chans *zmq.Channels) {
+	go func() {
+		fmt.Println("Triggerring GC")
+		chans.Out() <- [][]byte{[]byte("handshake")}
+		fmt.Println("Triggerred GC")
+	}()
+}
+
+func processIncomingMessage(parts [][]byte) {
+	var msg map[int]interface{}
+	joinedBytes := bytes.Join(parts, nil)
+
+	if len(joinedBytes) != 2 {
+		// This is a msgpack message
+		for _, part := range parts {
+			var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
+			err := dec.Decode(&msg)
+			checkError(err)
+			unpacked := unpackHandshake(msg)
+			unpacked.Print()
+		}
+	} else {
+		fmt.Println("received ", string(joinedBytes))
 	}
 }
 
