@@ -25,31 +25,33 @@ func checkError(err error) {
 	}
 }
 
-func askForOption(option chan string) {
-	var input int
-	fmt.Println("Enter a selection for the command: ")
-	fmt.Println("1. Start Memory Profile")
-	fmt.Println("2. Stop Memory Profile")
-	fmt.Println("3. Objectspace Snapshot")
-	fmt.Println("4. Trigger GC")
-	fmt.Println("5. Handshake")
-	fmt.Println("Hit Ctrl+C to stop")
-	fmt.Scanln(&input)
+func askForOption() <-chan string {
+	option := make(chan string)
+	go func() {
+		var input int
+		fmt.Println("Enter a selection for the command: ")
+		fmt.Println("1. Start Memory Profile")
+		fmt.Println("2. Stop Memory Profile")
+		fmt.Println("3. Objectspace Snapshot")
+		fmt.Println("4. Trigger GC")
+		fmt.Println("5. Handshake")
+		fmt.Println("Hit Ctrl+C to stop")
+		fmt.Scanln(&input)
 
-	if input > 0 && input < 6 {
-		option <- optionDict[input]
-	} else {
-		go askForOption(option)
-		fmt.Println("\nInvalid option\n\n")
-	}
+		if input > 0 && input < 6 {
+			option <- optionDict[input]
+		} else {
+			go askForOption()
+			fmt.Println("\nInvalid option\n\n")
+		}
+	}()
+	return option
 }
 
 func main() {
 	var h codec.MsgpackHandle
 	h.WriteExt = true
 	h.RawToString = true
-	option := make(chan string)
-
 	ctx, err := zmq.NewContext()
 	checkError(err)
 	defer ctx.Close()
@@ -65,8 +67,9 @@ func main() {
 	for {
 		var msg map[int]interface{}
 
-		go askForOption(option)
-		sendCommand(option, commandSock)
+		optionChan := askForOption()
+		err := <-sendCommand(optionChan, commandSock)
+		checkError(err)
 
 		fmt.Println("waiting for data")
 		parts, err := commandSock.Recv()
@@ -88,12 +91,16 @@ func main() {
 	}
 }
 
-func sendCommand(option chan string, commandSock *zmq.Socket) {
+func sendCommand(option <-chan string, commandSock *zmq.Socket) chan error {
 	command := <-option
-	fmt.Println("sending command ", command)
-	err := commandSock.Send([][]byte{[]byte(command)})
-	checkError(err)
-	fmt.Println("sent command ", command)
+	err := make(chan error)
+	go func() {
+		fmt.Println("sending command ", command)
+		err <- commandSock.Send([][]byte{[]byte(command)})
+		fmt.Println("sent command ", command)
+	}()
+
+	return err
 }
 
 type HandshakeResponse struct {
