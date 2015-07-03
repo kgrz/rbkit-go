@@ -62,45 +62,34 @@ func main() {
 
 	err = commandSock.Connect("tcp://127.0.0.1:5556")
 	checkError(err)
+	chans := commandSock.Channels()
 
 	// Repeatedly ask for an option
 	for {
 		var msg map[int]interface{}
-
 		optionChan := askForOption()
-		err := <-sendCommand(optionChan, commandSock)
-		checkError(err)
+		chans.Out() <- [][]byte{[]byte(<-optionChan)}
 
-		fmt.Println("waiting for data")
-		parts, err := commandSock.Recv()
-		checkError(err)
-		joinedBytes := bytes.Join(parts, nil)
+		select {
+		case parts := <-chans.In():
+			joinedBytes := bytes.Join(parts, nil)
 
-		if len(joinedBytes) != 2 {
-			// This is a msgpack message
-			for _, part := range parts {
-				var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
-				err = dec.Decode(&msg)
-				checkError(err)
-				unpacked := unpackHandshake(msg)
-				unpacked.Print()
+			if len(joinedBytes) != 2 {
+				// This is a msgpack message
+				for _, part := range parts {
+					var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
+					err = dec.Decode(&msg)
+					checkError(err)
+					unpacked := unpackHandshake(msg)
+					unpacked.Print()
+				}
+			} else {
+				fmt.Println("received ", string(joinedBytes))
 			}
-		} else {
-			fmt.Println("received ", string(joinedBytes))
+		case err := <-chans.Errors():
+			checkError(err)
 		}
 	}
-}
-
-func sendCommand(option <-chan string, commandSock *zmq.Socket) chan error {
-	command := <-option
-	err := make(chan error)
-	go func() {
-		fmt.Println("sending command ", command)
-		err <- commandSock.Send([][]byte{[]byte(command)})
-		fmt.Println("sent command ", command)
-	}()
-
-	return err
 }
 
 type HandshakeResponse struct {
