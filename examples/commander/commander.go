@@ -49,9 +49,6 @@ func askForOption() <-chan string {
 }
 
 func main() {
-	var h codec.MsgpackHandle
-	h.WriteExt = true
-	h.RawToString = true
 	ctx, err := zmq.NewContext()
 	checkError(err)
 	defer ctx.Close()
@@ -66,29 +63,36 @@ func main() {
 
 	// Repeatedly ask for an option
 	for {
-		var msg map[int]interface{}
 		optionChan := askForOption()
 		chans.Out() <- [][]byte{[]byte(<-optionChan)}
 
 		select {
 		case parts := <-chans.In():
-			joinedBytes := bytes.Join(parts, nil)
-
-			if len(joinedBytes) != 2 {
-				// This is a msgpack message
-				for _, part := range parts {
-					var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
-					err = dec.Decode(&msg)
-					checkError(err)
-					unpacked := unpackHandshake(msg)
-					unpacked.Print()
-				}
-			} else {
-				fmt.Println("received ", string(joinedBytes))
-			}
+			decodeMsgpackAndPrint(parts)
 		case err := <-chans.Errors():
 			checkError(err)
 		}
+	}
+}
+
+func decodeMsgpackAndPrint(parts [][]byte) {
+	var h codec.MsgpackHandle
+	h.WriteExt = true
+	h.RawToString = true
+	var msg map[int]interface{}
+	joinedBytes := bytes.Join(parts, nil)
+
+	if len(joinedBytes) != 2 {
+		// This is a msgpack message
+		for _, part := range parts {
+			var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
+			err := dec.Decode(&msg)
+			checkError(err)
+			unpacked := unpackHandshake(msg)
+			unpacked.Print()
+		}
+	} else {
+		fmt.Println("received ", string(joinedBytes))
 	}
 }
 
