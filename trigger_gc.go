@@ -44,11 +44,22 @@ func main() {
 	checkError(err)
 	defer commandSock.Close()
 
+	dataSock, err := ctx.Socket(zmq.Sub)
+	checkError(err)
+	defer dataSock.Close()
+
 	err = commandSock.Connect("tcp://127.0.0.1:5556")
+	checkError(err)
+
+	dataSock.Subscribe([]byte(""))
+	err = dataSock.Connect("tcp://127.0.0.1:5555")
 	checkError(err)
 
 	chans := commandSock.Channels()
 	defer chans.Close()
+
+	dataChans := dataSock.Channels()
+	defer dataChans.Close()
 
 	// send the command once. Do this inside a go routine
 	sendCommand(chans)
@@ -62,6 +73,13 @@ func main() {
 				sendCommand(chans)
 			}()
 		case err := <-chans.Errors():
+			checkError(err)
+		case parts := <-dataChans.In():
+			go func() {
+				fmt.Println("Got info")
+				processIncomingEvent(parts)
+			}()
+		case err := <-dataChans.Errors():
 			checkError(err)
 		}
 		time.Sleep(time.Second * 1)
@@ -91,6 +109,17 @@ func processIncomingMessage(parts [][]byte) {
 		}
 	} else {
 		fmt.Println("received ", string(joinedBytes))
+	}
+}
+
+func processIncomingEvent(parts [][]byte) {
+	var msg map[int]interface{}
+
+	for _, part := range parts {
+		var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
+		err := dec.Decode(&msg)
+		checkError(err)
+		fmt.Println(msg)
 	}
 }
 
