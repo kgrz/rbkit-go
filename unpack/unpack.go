@@ -2,6 +2,7 @@ package unpack
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/ugorji/go/codec"
 )
@@ -60,8 +61,8 @@ type objCreatedPayload struct {
 	ClassName string
 }
 
-func ObjCreatedEvt(payload map[int]interface{}) (response ObjCreated) {
-	payloadMap := payload[2].(map[interface{}]interface{})
+func ObjCreatedEvt(payload map[int64]interface{}) (response ObjCreated) {
+	payloadMap := payload[2]
 
 	objCreatedPayloadObj := objCreatedPayload{
 		ObjectId:  payloadMap[3].(int64),
