@@ -57,16 +57,16 @@ type ObjCreated struct {
 }
 
 type objCreatedPayload struct {
-	ObjectId  int64
+	ObjectId  uint64
 	ClassName string
 }
 
 func ObjCreatedEvt(payload map[int64]interface{}) (response ObjCreated) {
-	payloadMap := payload[2]
+	payloadMap := payload[2].(map[int64]interface{})
 
 	objCreatedPayloadObj := objCreatedPayload{
-		ObjectId:  payloadMap[3].(int64),
-		ClassName: payloadMap[3].(string),
+		ObjectId:  payloadMap[3].(uint64),
+		ClassName: payloadMap[4].(string),
 	}
 
 	response = ObjCreated{
@@ -85,20 +85,20 @@ type ObjDestroyed struct {
 }
 
 type objDestroyedPayload struct {
-	ObjectId int64
+	ObjectId uint64
 }
 
-func ObjDestroyedEvt(payload map[int]interface{}) (response ObjDestroyed) {
-	payloadMap := payload[2].(map[interface{}]interface{})
+func ObjDestroyedEvt(payload map[int64]interface{}) (response ObjDestroyed) {
+	payloadMap := payload[2].(map[int64]interface{})
 
-	objCreatedPayloadObj := objCreatedPayload{
-		ObjectId: payloadMap[3].(int64),
+	objDestroyedPayloadObj := objDestroyedPayload{
+		ObjectId: payloadMap[3].(uint64),
 	}
 
-	reponse := ObjCreated{
+	response = ObjDestroyed{
 		EventType: payload[0].(int64),
 		Timestamp: payload[1].(float64),
-		Payload:   objCreatedPayloadObj,
+		Payload:   objDestroyedPayloadObj,
 	}
 
 	return
@@ -119,10 +119,8 @@ type GcEndMinor struct {
 	Timestamp float64
 }
 
-func GcStartEvt(payload interface{}) (response GcStart) {
-	payloadMap := payload[2].(map[interface{}]interface{})
-
-	reponse := GcStart{
+func GcStartEvt(payload map[int64]interface{}) (response GcStart) {
+	response = GcStart{
 		EventType: payload[0].(int64),
 		Timestamp: payload[1].(float64),
 	}
@@ -130,10 +128,8 @@ func GcStartEvt(payload interface{}) (response GcStart) {
 	return
 }
 
-func GcEndSweepEvt(payload map[int]interface{}) (response GcEndSweep) {
-	payloadMap := payload[2].(map[interface{}]interface{})
-
-	reponse := GcEndSweep{
+func GcEndSweepEvt(payload map[int64]interface{}) (response GcEndSweep) {
+	response = GcEndSweep{
 		EventType: payload[0].(int64),
 		Timestamp: payload[1].(float64),
 	}
@@ -141,10 +137,8 @@ func GcEndSweepEvt(payload map[int]interface{}) (response GcEndSweep) {
 	return
 }
 
-func GcEndMinorEvt(payload map[int]interface{}) (response GcEndMinor) {
-	payloadMap := payload[2].(map[interface{}]interface{})
-
-	reponse := GcEndMinor{
+func GcEndMinorEvt(payload map[int64]interface{}) (response GcEndMinor) {
+	response = GcEndMinor{
 		EventType: payload[0].(int64),
 		Timestamp: payload[1].(float64),
 	}
@@ -177,15 +171,31 @@ type GcStat struct {
 	TotalMemsize                int64 `codec:"total_memsize"`
 }
 
-func GcStatsEvt(payload map[int]interface{}) (response GcStat) {
+func GcStatsEvt(event map[int64]interface{}) (response GcStat) {
+	/* we try to encode the payload part first to msgpack format and then
+	* decode it again so that we get the struct conversion easily instead of
+	* manually assigning each element of the struct to the payload's value item
+	 *
+	 *  This is foolish
+	 *
+	 * The reason for these gymnastics is because the keys of the normal
+	 * message are ints whereas the keys of gc stats are strings. Go msgpack
+	 * can't parse int key objects if it's given a struct to parse to. So we
+	 * take out the payload portion, encode it, and then decode it back to the
+	 * struct format in one shot by giving the target type.
+	*/
+	payload := event[2].(map[string]interface{})
+
+	var b []byte = make([]byte, 0, 100)
 	var h codec.MsgpackHandle
 	h.WriteExt = true
 	h.RawToString = true
-	part := payload[2].([]byte)
-	fmt.Println(part)
+	h.MapType = reflect.TypeOf(map[string]interface{}(nil))
+	var enc *codec.Encoder = codec.NewEncoderBytes(&b, &h)
+	err := enc.Encode(payload)
 
-	var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
-	err := dec.Decode(&response)
+	var dec *codec.Decoder = codec.NewDecoderBytes(b, &h)
+	err = dec.Decode(&response)
 	checkError(err)
 
 	return

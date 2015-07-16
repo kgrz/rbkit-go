@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kgrz/rbkit-go/unpack"
 	"github.com/ugorji/go/codec"
 	"github.com/vaughan0/go-zmq"
 )
@@ -53,7 +54,6 @@ func main() {
 		select {
 		case parts := <-chans.In():
 			go func() {
-				fmt.Println("Received response")
 				processIncomingMessage(parts)
 				sendCommand(chans)
 			}()
@@ -61,7 +61,6 @@ func main() {
 			checkError(err)
 		case parts := <-dataChans.In():
 			go func() {
-				fmt.Println("Got info")
 				processIncomingEvent(parts)
 			}()
 		case err := <-dataChans.Errors():
@@ -73,9 +72,7 @@ func main() {
 
 func sendCommand(chans *zmq.Channels) {
 	go func() {
-		fmt.Println("Triggerring GC")
-		chans.Out() <- [][]byte{[]byte("handshake")}
-		fmt.Println("Triggerred GC")
+		chans.Out() <- [][]byte{[]byte("trigger_gc")}
 	}()
 }
 
@@ -93,7 +90,7 @@ func processIncomingMessage(parts [][]byte) {
 			unpacked.Print()
 		}
 	} else {
-		fmt.Println("received ", string(joinedBytes))
+		//fmt.Println("received ", string(joinedBytes))
 	}
 }
 
@@ -125,6 +122,36 @@ func convertMapToIntKeys(event map[interface{}]interface{}) map[int64]interface{
 	return anotherEvt
 }
 
+func convertGcStatsEvtKeys(event map[interface{}]interface{}) map[int64]interface{} {
+	gcStats := make(map[int64]interface{})
+
+	for key, value := range event {
+		switch value.(type) {
+		case map[interface{}]interface{}:
+			gcStats[key.(int64)] = interface{}(convertMapToStringKeys(value.(map[interface{}]interface{})))
+		default:
+			gcStats[key.(int64)] = value
+		}
+	}
+
+	return gcStats
+}
+
+func convertMapToStringKeys(value map[interface{}]interface{}) map[string]interface{} {
+	gcStats := make(map[string]interface{})
+
+	for key, value := range value {
+		switch value.(type) {
+		case map[interface{}]interface{}:
+			gcStats[key.(string)] = interface{}(convertMapToStringKeys(value.(map[interface{}]interface{})))
+		default:
+			gcStats[key.(string)] = value
+		}
+	}
+
+	return gcStats
+}
+
 func parseEventType(event interface{}) int64 {
 	var evtType int64
 
@@ -135,34 +162,6 @@ func parseEventType(event interface{}) int64 {
 	}
 
 	return evtType
-}
-
-type ObjCreated struct {
-	EventType int64
-	Timestamp float64
-	Payload   objCreatedPayload
-}
-
-type objCreatedPayload struct {
-	ObjectId  uint64
-	ClassName string
-}
-
-func ObjCreatedEvt(payload map[int64]interface{}) (response ObjCreated) {
-	payloadMap := payload[2].(map[int64]interface{})
-
-	objCreatedPayloadObj := objCreatedPayload{
-		ObjectId:  payloadMap[3].(uint64),
-		ClassName: payloadMap[4].(string),
-	}
-
-	response = ObjCreated{
-		EventType: payload[0].(int64),
-		Timestamp: payload[1].(float64),
-		Payload:   objCreatedPayloadObj,
-	}
-
-	return
 }
 
 func unpackEvent(payload map[int]interface{}, part []byte) {
@@ -183,41 +182,33 @@ func unpackEvent(payload map[int]interface{}, part []byte) {
 		switch evtType {
 		case 0:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpackedEvent := ObjCreatedEvt(evt)
+			unpack.ObjCreatedEvt(evt)
+		case 1:
+			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
+			unpack.ObjDestroyedEvt(evt)
+		case 2:
+			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
+			unpackedEvent := unpack.GcStartEvt(evt)
+			fmt.Println("gc started")
+			fmt.Println(unpackedEvent)
+		case 3:
+			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
+			unpackedEvent := unpack.GcEndMinorEvt(evt)
+			fmt.Println("gc end minor")
+			fmt.Println(unpackedEvent)
+		case 4:
+			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
+			unpackedEvent := unpack.GcEndSweepEvt(evt)
+			fmt.Println("gc end sweep")
+			fmt.Println(unpackedEvent)
+		case 6:
+			fmt.Println("gc stats")
+			evt := convertGcStatsEvtKeys(event.(map[interface{}]interface{}))
+			unpackedEvent := unpack.GcStatsEvt(evt)
 			fmt.Println(unpackedEvent)
 		}
-		//fmt.Println(unpackedEvent)
-
 		//unpackEvent.Print()
-		//case 1:
-		//unpackedEvent = unpack.ObjDestroyedEvt(event)
-		//case 2:
-		//unpackedEvent = unpack.GcStartEvt(event)
-		//case 3:
-		//unpackedEvent = unpack.GcEndMinorEvt(event)
-		//case 4:
-		//unpackedEvent = unpack.GcEndSweepEvt(event)
-		////case 5:
-		////[> Not implemented <]
-		////unpack.ObjectSpaceDumpEvt(event)
-		//case 6:
-		//unpackedEvent = unpack.GcStatsEvt(event)
-		//}
 	}
-
-	/* iterate over the payloadMap object and check the event of each
-	element. This would enable us to properly unpack and generate objects */
-	//for _, event := range evtCollectionPayload {
-	//var unpackedEvent EventInterface
-	//fmt.Println(event)
-	//eventType := event[0]
-
-	//append(events, unpackedEvent)
-	//}
-	/* handshake is not from sub socket. this has to be handled inside
-	* command channel */
-	//case 8:
-	//unpack.HandshakeEvt(payload)
 }
 
 func (h HandshakeResponse) Print() {
