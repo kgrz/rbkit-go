@@ -1,8 +1,10 @@
 package unpack
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/ugorji/go/codec"
 )
@@ -207,26 +209,68 @@ func checkError(err error) {
 	}
 }
 
-func (evt GcEndMinor) Print() {
-	fmt.Println("GC End minor")
+func (evt GcEndMinor) String() string {
+	var buffer bytes.Buffer
+	buffer.WriteString("Event Type : GC End Minor")
+	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))
+	return buffer.String()
 }
 
-func (evt GcEndSweep) Print() {
-	fmt.Println("GC End sweep")
+func (evt GcEndSweep) String() string {
+	var buffer bytes.Buffer
+	buffer.WriteString("Event Type : GC End Sweep")
+	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))
+	return buffer.String()
 }
 
-func (evt GcStart) Print() {
-	fmt.Println("GC Start")
+func (evt GcStart) String() string {
+	var buffer bytes.Buffer
+	buffer.WriteString("Event Type : GC Start")
+	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))
+	return buffer.String()
 }
 
-func (evt GcStat) Print() {
-	fmt.Println("GC Stat")
+func (evt GcStat) String() string {
+	var buffer bytes.Buffer
+	buffer.WriteString("Event Type : GC Start")
+	buffer.WriteString(fmt.Sprintln("GC Count", evt.Count))
+	buffer.WriteString(fmt.Sprintln("Minor GC Count", evt.MinorGcCount))
+	buffer.WriteString(fmt.Sprintln("Major GC Count", evt.MajorGcCount))
+	buffer.WriteString(fmt.Sprintln("Heap Allocated Pages", evt.HeapAllocatedPages))
+	buffer.WriteString(fmt.Sprintln("Heap Eden Pages", evt.HeapEdenPages))
+	buffer.WriteString(fmt.Sprintln("Heap Tomb Pages", evt.HeapTombPages))
+	buffer.WriteString(fmt.Sprintln("Heap Allocatable Pages", evt.HeapAllocatablePages))
+	buffer.WriteString(fmt.Sprintln("Heap Sorted Length", evt.HeapSortedLength))
+	buffer.WriteString(fmt.Sprintln("Heap Live Slots", evt.HeapLiveSlots))
+	buffer.WriteString(fmt.Sprintln("Heap Free Slots", evt.HeapFreeSlots))
+	buffer.WriteString(fmt.Sprintln("Heap Sweep Slots", evt.HeapSweptSlots))
+	buffer.WriteString(fmt.Sprintln("Old Objects", evt.OldObjects))
+	buffer.WriteString(fmt.Sprintln("Old Objects Limit", evt.OldObjectsLimit))
+	buffer.WriteString(fmt.Sprintln("Total Allocated Objects", evt.TotalAllocatedObjects))
+	buffer.WriteString(fmt.Sprintln("Total Freed Objects", evt.TotalFreedObjects))
+	buffer.WriteString(fmt.Sprintln("Heap Final Slots", evt.HeapFinalSlots))
+	buffer.WriteString(fmt.Sprintln("Malloc Increased Bytes", evt.MallocIncreaseBytes))
+	buffer.WriteString(fmt.Sprintln("Malloc Increased Bytes Limit", evt.MallocIncreaseBytesLimit))
+	buffer.WriteString(fmt.Sprintln("Old Malloc Increased Bytes", evt.OldMallocIncreaseBytes))
+	buffer.WriteString(fmt.Sprintln("Old Malloc Increased Bytes Limit", evt.OldMallocIncreaseBytesLimit))
+	buffer.WriteString(fmt.Sprintln("Total Heap Size", evt.TotalHeapSize))
+	buffer.WriteString(fmt.Sprintln("Total Memsize", evt.TotalMemsize))
+	return buffer.String()
 }
 
-func (evt ObjCreated) Print() {
-	fmt.Println("Object Created")
+func (evt ObjCreated) String() string {
+	var buffer bytes.Buffer
+	buffer.WriteString("Event Type : Object Created")
+	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))
+	buffer.WriteString(fmt.Sprintln("Object ID: ", evt.Payload.ObjectId))
+	buffer.WriteString(fmt.Sprintln("Class Name: ", evt.Payload.ClassName))
+	return buffer.String()
 }
 
-func (evt ObjDestroyed) Print() {
-	fmt.Println("Object Destroyed")
+func (evt ObjDestroyed) String() string {
+	var buffer bytes.Buffer
+	buffer.WriteString("Event Type : Object Destroyed")
+	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))
+	buffer.WriteString(fmt.Sprintln("Object ID: ", evt.Payload.ObjectId))
+	return buffer.String()
 }

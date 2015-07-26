@@ -87,7 +87,7 @@ func processIncomingMessage(parts [][]byte) {
 			err := dec.Decode(&msg)
 			checkError(err)
 			unpacked := unpackHandshake(msg)
-			unpacked.Print()
+			fmt.Println(unpacked)
 		}
 	} else {
 		//fmt.Println("received ", string(joinedBytes))
@@ -179,36 +179,34 @@ func unpackEvent(payload map[int]interface{}, part []byte) {
 		   because gc stats doesn't have int keys inside payload */
 		evtType := parseEventType(event)
 
+		var unpackedEvent Event
+
 		switch evtType {
 		case 0:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpack.ObjCreatedEvt(evt)
+			unpackedEvent = unpack.ObjCreatedEvt(evt)
 		case 1:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpack.ObjDestroyedEvt(evt)
+			unpackedEvent = unpack.ObjDestroyedEvt(evt)
 		case 2:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpackedEvent := unpack.GcStartEvt(evt)
-			fmt.Println("gc started")
-			fmt.Println(unpackedEvent)
+			unpackedEvent = unpack.GcStartEvt(evt)
 		case 3:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpackedEvent := unpack.GcEndMinorEvt(evt)
-			fmt.Println("gc end minor")
-			fmt.Println(unpackedEvent)
+			unpackedEvent = unpack.GcEndMinorEvt(evt)
 		case 4:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpackedEvent := unpack.GcEndSweepEvt(evt)
-			fmt.Println("gc end sweep")
-			fmt.Println(unpackedEvent)
+			unpackedEvent = unpack.GcEndSweepEvt(evt)
 		case 6:
-			fmt.Println("gc stats")
 			evt := convertGcStatsEvtKeys(event.(map[interface{}]interface{}))
-			unpackedEvent := unpack.GcStatsEvt(evt)
-			fmt.Println(unpackedEvent)
+			unpackedEvent = unpack.GcStatsEvt(evt)
 		}
-		//unpackEvent.Print()
+		fmt.Println(unpackedEvent)
 	}
+}
+
+type Event interface {
+	String() string
 }
 
 func (h HandshakeResponse) String() string {
