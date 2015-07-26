@@ -274,3 +274,21 @@ func (evt *ObjDestroyed) String() string {
 	buffer.WriteString(fmt.Sprintln("Object ID: ", evt.Payload.ObjectId))
 	return buffer.String()
 }
+
+func (h *Handshake) String() string {
+	var buffer bytes.Buffer
+	buffer.WriteString("Event Type: Handshake\n")
+	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(h.Timestamp), 0)))
+	buffer.WriteString(fmt.Sprintln("Rbkit Server Version: ", h.Payload.ServerVersion))
+	buffer.WriteString(fmt.Sprintln("Rbkit Protocol Version: ", h.Payload.ProtocolVersion))
+	buffer.WriteString(fmt.Sprintln("Process Name: ", h.Payload.ProcessName))
+	buffer.WriteString(fmt.Sprintln("Working Directory: ", h.Payload.Pwd))
+	buffer.WriteString(fmt.Sprintln("Pid: ", h.Payload.Pid))
+
+	if h.Payload.ObjectTraceEnabled {
+		buffer.WriteString("Object Trace Enabled\n")
+	} else {
+		buffer.WriteString("Object Trace Not Enabled\n")
+	}
+	return buffer.String()
+}

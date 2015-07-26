@@ -86,11 +86,11 @@ func processIncomingMessage(parts [][]byte) {
 			var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
 			err := dec.Decode(&msg)
 			checkError(err)
-			unpacked := unpackHandshake(msg)
+			unpacked := unpack.HandshakeEvt(msg)
 			fmt.Println(unpacked)
 		}
 	} else {
-		//fmt.Println("received ", string(joinedBytes))
+		fmt.Println("received ", string(joinedBytes))
 	}
 }
 
@@ -102,8 +102,7 @@ func processIncomingEvent(parts [][]byte) {
 		var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
 		err := dec.Decode(&msg)
 		checkError(err)
-		unpackEvent(msg, part)
-		//unpacked.Print()
+		unpackEventCollection(msg, part)
 	}
 }
 
@@ -164,7 +163,7 @@ func parseEventType(event interface{}) int64 {
 	return evtType
 }
 
-func unpackEvent(payload map[int]interface{}, part []byte) {
+func unpackEventCollection(payload map[int]interface{}, part []byte) {
 	eventType := payload[0].(int64)
 	/* This event is always of the type Event Collection */
 
@@ -214,65 +213,4 @@ func unpackEvent(payload map[int]interface{}, part []byte) {
 
 type Event interface {
 	String() string
-}
-
-func (h *HandshakeResponse) String() string {
-	var buffer bytes.Buffer
-	buffer.WriteString("Event Type: Handshake\n")
-	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(h.Timestamp), 0)))
-	buffer.WriteString(fmt.Sprintln("Rbkit Server Version: ", h.Payload.ServerVersion))
-	buffer.WriteString(fmt.Sprintln("Rbkit Protocol Version: ", h.Payload.ProtocolVersion))
-	buffer.WriteString(fmt.Sprintln("Process Name: ", h.Payload.ProcessName))
-	buffer.WriteString(fmt.Sprintln("Working Directory: ", h.Payload.Pwd))
-	buffer.WriteString(fmt.Sprintln("Pid: ", h.Payload.Pid))
-
-	if h.Payload.ObjectTraceEnabled {
-		buffer.WriteString("Object Trace Enabled\n")
-	} else {
-		buffer.WriteString("Object Trace Not Enabled\n")
-	}
-	return buffer.String()
-}
-
-func unpackHandshake(payload map[int]interface{}) (response HandshakeResponse) {
-	payloadMap := payload[2].(map[interface{}]interface{})
-	var objectTraceEnabled bool
-
-	if payloadMap["object_trace_enabled"] == 0 {
-		objectTraceEnabled = false
-	} else {
-		objectTraceEnabled = true
-	}
-
-	handshakePayloadObj := handshakePayload{
-		ServerVersion:      payloadMap["rbkit_server_version"].(string),
-		ProtocolVersion:    payloadMap["rbkit_protocol_version"].(string),
-		ProcessName:        payloadMap["process_name"].(string),
-		Pwd:                payloadMap["pwd"].(string),
-		Pid:                payloadMap["pid"].(uint64),
-		ObjectTraceEnabled: objectTraceEnabled,
-	}
-
-	response = HandshakeResponse{
-		EventType: payload[0].(int64),
-		Timestamp: payload[1].(float64),
-		Payload:   handshakePayloadObj,
-	}
-
-	return
-}
-
-type HandshakeResponse struct {
-	EventType int64
-	Timestamp float64
-	Payload   handshakePayload
-}
-
-type handshakePayload struct {
-	ServerVersion      string
-	ProtocolVersion    string
-	ProcessName        string
-	Pwd                string
-	Pid                uint64
-	ObjectTraceEnabled bool
 }
