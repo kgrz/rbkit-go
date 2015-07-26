@@ -105,7 +105,7 @@ func processIncomingMessage(parts [][]byte) {
 			err := dec.Decode(&msg)
 			checkError(err)
 			unpacked := unpackHandshake(msg)
-			fmt.Println(unpacked)
+			fmt.Println(&unpacked)
 		}
 	} else {
 		fmt.Println("received ", string(joinedBytes))
@@ -151,7 +151,7 @@ func unpackHandshake(payload map[int]interface{}) (response HandshakeResponse) {
 	return
 }
 
-func (h HandshakeResponse) String() string {
+func (h *HandshakeResponse) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("Event Type: Handshake\n")
 	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(h.Timestamp), 0)))

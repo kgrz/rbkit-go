@@ -209,28 +209,28 @@ func checkError(err error) {
 	}
 }
 
-func (evt GcEndMinor) String() string {
+func (evt *GcEndMinor) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("Event Type : GC End Minor")
 	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))
 	return buffer.String()
 }
 
-func (evt GcEndSweep) String() string {
+func (evt *GcEndSweep) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("Event Type : GC End Sweep")
 	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))
 	return buffer.String()
 }
 
-func (evt GcStart) String() string {
+func (evt *GcStart) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("Event Type : GC Start")
 	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))
 	return buffer.String()
 }
 
-func (evt GcStat) String() string {
+func (evt *GcStat) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("Event Type : GC Start")
 	buffer.WriteString(fmt.Sprintln("GC Count", evt.Count))
@@ -258,7 +258,7 @@ func (evt GcStat) String() string {
 	return buffer.String()
 }
 
-func (evt ObjCreated) String() string {
+func (evt *ObjCreated) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("Event Type : Object Created")
 	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))
@@ -267,7 +267,7 @@ func (evt ObjCreated) String() string {
 	return buffer.String()
 }
 
-func (evt ObjDestroyed) String() string {
+func (evt *ObjDestroyed) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("Event Type : Object Destroyed")
 	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(evt.Timestamp), 0)))

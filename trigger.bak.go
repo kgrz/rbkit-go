@@ -179,29 +179,36 @@ func unpackEvent(payload map[int]interface{}, part []byte) {
 		   because gc stats doesn't have int keys inside payload */
 		evtType := parseEventType(event)
 
-		var unpackedEvent Event
+		var unpacked Event
 
 		switch evtType {
 		case 0:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpackedEvent = unpack.ObjCreatedEvt(evt)
+			unpackedEvent := unpack.ObjCreatedEvt(evt)
+			unpacked = &unpackedEvent
 		case 1:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpackedEvent = unpack.ObjDestroyedEvt(evt)
+			unpackedEvent := unpack.ObjDestroyedEvt(evt)
+			unpacked = &unpackedEvent
 		case 2:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpackedEvent = unpack.GcStartEvt(evt)
+			unpackedEvent := unpack.GcStartEvt(evt)
+			unpacked = &unpackedEvent
 		case 3:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpackedEvent = unpack.GcEndMinorEvt(evt)
+			unpackedEvent := unpack.GcEndMinorEvt(evt)
+			unpacked = &unpackedEvent
 		case 4:
 			evt := convertMapToIntKeys(event.(map[interface{}]interface{}))
-			unpackedEvent = unpack.GcEndSweepEvt(evt)
+			unpackedEvent := unpack.GcEndSweepEvt(evt)
+			unpacked = &unpackedEvent
 		case 6:
 			evt := convertGcStatsEvtKeys(event.(map[interface{}]interface{}))
-			unpackedEvent = unpack.GcStatsEvt(evt)
+			unpackedEvent := unpack.GcStatsEvt(evt)
+			unpacked = &unpackedEvent
 		}
-		fmt.Println(unpackedEvent)
+
+		fmt.Println(unpacked)
 	}
 }
 
@@ -209,7 +216,7 @@ type Event interface {
 	String() string
 }
 
-func (h HandshakeResponse) String() string {
+func (h *HandshakeResponse) String() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("Event Type: Handshake\n")
 	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(h.Timestamp), 0)))
@@ -225,10 +232,6 @@ func (h HandshakeResponse) String() string {
 		buffer.WriteString("Object Trace Not Enabled\n")
 	}
 	return buffer.String()
-}
-
-type EventInterface interface {
-	Print()
 }
 
 func unpackHandshake(payload map[int]interface{}) (response HandshakeResponse) {
