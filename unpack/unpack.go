@@ -9,6 +9,14 @@ import (
 	"github.com/ugorji/go/codec"
 )
 
+type CpuSample struct {
+	EventType int64
+}
+
+func (evt *CpuSample) String() string {
+	return "CPU Event; not implemented yet"
+}
+
 type Handshake struct {
 	EventType int64
 	Timestamp float64

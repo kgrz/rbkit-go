@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"time"
 
 	"github.com/kgrz/rbkit-go/unpack"
 	"github.com/ugorji/go/codec"
@@ -205,6 +204,9 @@ func unpackEventCollection(payload map[int]interface{}, part []byte) {
 			evt := convertGcStatsEvtKeys(event.(map[interface{}]interface{}))
 			unpackedEvent := unpack.GcStatsEvt(evt)
 			unpacked = &unpackedEvent
+		case 9:
+			unpackedEvent := new(unpack.CpuSample)
+			unpacked = unpackedEvent
 		}
 
 		fmt.Println(unpacked)
