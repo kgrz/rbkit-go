@@ -41,8 +41,8 @@ func main() {
 	err = dataSock.Connect("tcp://127.0.0.1:5555")
 	checkError(err)
 
-	chans := commandSock.Channels()
-	defer chans.Close()
+	commandChans := commandSock.Channels()
+	defer commandChans.Close()
 
 	dataChans := dataSock.Channels()
 	defer dataChans.Close()
@@ -52,12 +52,12 @@ func main() {
 
 	for {
 		select {
-		case parts := <-chans.In():
+		case parts := <-commandChans.In():
 			go func() {
 				processIncomingMessage(parts)
 				sendCommand(chans)
 			}()
-		case err := <-chans.Errors():
+		case err := <-commandChans.Errors():
 			checkError(err)
 		case parts := <-dataChans.In():
 			go func() {
