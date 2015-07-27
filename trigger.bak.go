@@ -48,14 +48,14 @@ func main() {
 	defer dataChans.Close()
 
 	// send the command once. Do this inside a go routine
-	sendCommand(chans)
+	//sendCommand(chans)
 
 	for {
 		select {
 		case parts := <-commandChans.In():
 			go func() {
 				processIncomingMessage(parts)
-				sendCommand(chans)
+				//sendCommand(chans)
 			}()
 		case err := <-commandChans.Errors():
 			checkError(err)
@@ -66,7 +66,7 @@ func main() {
 		case err := <-dataChans.Errors():
 			checkError(err)
 		}
-		time.Sleep(time.Second * 1)
+		//time.Sleep(time.Second * 1)
 	}
 }
 
