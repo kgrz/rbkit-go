@@ -6,10 +6,11 @@ Installing pre-requisites
 =========================
 
 After you have a working Go installation on your machine, install the
-ZMQ Go library by running:
+ZMQ Go library, and msgpack library by running:
 
 ```
 go get github.com/vaughan0/go-zmq
+go get github.com/ugorji/go/codec
 ```
 
 
@@ -28,3 +29,27 @@ trigger the GC in the running ruby script.
 
 To visualize if the GC is getting triggered or not, add a `puts
 GC.stat(:count)` in the `using_rbkit.rb` file.
+
+
+Running the `using_rbkit.rb` clone
+==================================
+
+To run the clone of `using_rbkit.rb` which will log all the event
+messges received from the server to the file `/tmp/rbkit_go.log`, run
+the following command:
+
+`go run trigger.bak.go`
+
+I still have to work on the naming
+
+
+Running the command test
+========================
+
+To run command test, run the following command:
+
+`go run examples/commander/commander.go`
+
+This will open a prompt on the terminal to that of the
+`rbkit_command_test.rb` on the Rbkit repo. This one won't log any output
+from the data socket anywhere.
