@@ -193,6 +193,11 @@ func GcStatsEvt(event map[int64]interface{}) (response GcStat) {
 	 * can't parse int key objects if it's given a struct to parse to. So we
 	 * take out the payload portion, encode it, and then decode it back to the
 	 * struct format in one shot by giving the target type.
+	 *
+	 * That said, this seems unavoidable since the resultant types for each of
+	 * the parsed payload items is not consistent if we don't specify a target
+	 * type. For example, the type for total allocated objects can vary between
+	 * uint64 and int64.
 	*/
 	payload := event[2].(map[string]interface{})
 
