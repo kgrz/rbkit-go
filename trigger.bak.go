@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/kgrz/rbkit-go/unpack"
 	"github.com/ugorji/go/codec"
@@ -16,8 +17,13 @@ func checkError(err error) {
 }
 
 var h codec.MsgpackHandle
+var logFile *os.File
 
 func main() {
+	logFile, err := os.Create("/tmp/rbkit_go.log")
+	checkError(err)
+	defer logFile.Close()
+
 	h.WriteExt = true
 	h.RawToString = true
 
@@ -60,7 +66,7 @@ func main() {
 			checkError(err)
 		case parts := <-dataChans.In():
 			go func() {
-				processIncomingEvent(parts)
+				processIncomingEvent(parts, logFile)
 			}()
 		case err := <-dataChans.Errors():
 			checkError(err)
@@ -75,6 +81,8 @@ func sendCommand(chans *zmq.Channels) {
 	}()
 }
 
+// function for processing Command socket messages. This includes a handshake
+// event
 func processIncomingMessage(parts [][]byte) {
 	var msg map[int]interface{}
 	joinedBytes := bytes.Join(parts, nil)
@@ -93,15 +101,15 @@ func processIncomingMessage(parts [][]byte) {
 	}
 }
 
-/* This handles processing event data */
-func processIncomingEvent(parts [][]byte) {
+// function for processing data socket messsages
+func processIncomingEvent(parts [][]byte, logFile *os.File) {
 	var msg map[int]interface{}
 
 	for _, part := range parts {
 		var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
 		err := dec.Decode(&msg)
 		checkError(err)
-		unpackEventCollection(msg, part)
+		unpackEventCollection(msg, part, logFile)
 	}
 }
 
@@ -162,7 +170,7 @@ func parseEventType(event interface{}) int64 {
 	return evtType
 }
 
-func unpackEventCollection(payload map[int]interface{}, part []byte) {
+func unpackEventCollection(payload map[int]interface{}, part []byte, logFile *os.File) {
 	eventType := payload[0].(int64)
 	/* This event is always of the type Event Collection */
 
@@ -209,7 +217,8 @@ func unpackEventCollection(payload map[int]interface{}, part []byte) {
 			unpacked = unpackedEvent
 		}
 
-		fmt.Println(unpacked)
+		_, err := logFile.WriteString(unpacked.String())
+		checkError(err)
 	}
 }
 

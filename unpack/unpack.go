@@ -14,7 +14,7 @@ type CpuSample struct {
 }
 
 func (evt *CpuSample) String() string {
-	return "CPU Event; not implemented yet"
+	return "CPU Event; not implemented yet\n"
 }
 
 type Handshake struct {
