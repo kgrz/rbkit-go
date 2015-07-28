@@ -1,3 +1,8 @@
+/*
+* This program works as an Rbkit client but logs the unpacked events to a
+* temporary file at /tmp/rbkit_go.log. This is a clone of the program
+* `using_rbkit.rb` in the Rbkit's examples folder.
+**/
 package main
 
 import (

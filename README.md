@@ -13,8 +13,6 @@ go get github.com/vaughan0/go-zmq
 go get github.com/ugorji/go/codec
 ```
 
-
-
 Running the GC test
 ===================
 
@@ -23,7 +21,7 @@ In the Rbkit repo, run the `experiments/using_rbkit.rb` daemon. This
 runs a sample script and has the rbkit server started.
 
 
-Clone this repo, run `go run trigger_gc.go` to repeatedly
+Clone this repo, run `go run examples/trigger_gc.go` to repeatedly
 trigger the GC in the running ruby script.
 
 
@@ -38,9 +36,7 @@ To run the clone of `using_rbkit.rb` which will log all the event
 messges received from the server to the file `/tmp/rbkit_go.log`, run
 the following command:
 
-`go run trigger.bak.go`
-
-I still have to work on the naming
+`go run examples/event_logger.go`
 
 
 Running the command test

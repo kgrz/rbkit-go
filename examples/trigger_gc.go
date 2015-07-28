@@ -1,3 +1,6 @@
+/* This program simply triggers a GC every 1 second and reads and parses the
+* response. Useful for quick debugging of the network communication.
+ */
 package main
 
 import (
