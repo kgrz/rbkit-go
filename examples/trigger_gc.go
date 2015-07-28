@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kgrz/rbkit-go/unpack"
 	"github.com/ugorji/go/codec"
 	"github.com/vaughan0/go-zmq"
 )
@@ -107,7 +108,7 @@ func processIncomingMessage(parts [][]byte) {
 			var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
 			err := dec.Decode(&msg)
 			checkError(err)
-			unpacked := unpackHandshake(msg)
+			unpacked := unpack.HandshakeEvt(msg)
 			fmt.Println(&unpacked)
 		}
 	} else {
@@ -124,50 +125,4 @@ func processIncomingEvent(parts [][]byte) {
 		checkError(err)
 		fmt.Println(msg)
 	}
-}
-
-func unpackHandshake(payload map[int]interface{}) (response HandshakeResponse) {
-	payloadMap := payload[2].(map[interface{}]interface{})
-	var objectTraceEnabled bool
-
-	if payloadMap["object_trace_enabled"] == 0 {
-		objectTraceEnabled = false
-	} else {
-		objectTraceEnabled = true
-	}
-
-	handshakePayloadObj := handshakePayload{
-		ServerVersion:      payloadMap["rbkit_server_version"].(string),
-		ProtocolVersion:    payloadMap["rbkit_protocol_version"].(string),
-		ProcessName:        payloadMap["process_name"].(string),
-		Pwd:                payloadMap["pwd"].(string),
-		Pid:                payloadMap["pid"].(uint64),
-		ObjectTraceEnabled: objectTraceEnabled,
-	}
-
-	response = HandshakeResponse{
-		EventType: payload[0].(int64),
-		Timestamp: payload[1].(float64),
-		Payload:   handshakePayloadObj,
-	}
-
-	return
-}
-
-func (h *HandshakeResponse) String() string {
-	var buffer bytes.Buffer
-	buffer.WriteString("Event Type: Handshake\n")
-	buffer.WriteString(fmt.Sprintln("Timestamp : ", time.Unix(int64(h.Timestamp), 0)))
-	buffer.WriteString(fmt.Sprintln("Rbkit Server Version: ", h.Payload.ServerVersion))
-	buffer.WriteString(fmt.Sprintln("Rbkit Protocol Version: ", h.Payload.ProtocolVersion))
-	buffer.WriteString(fmt.Sprintln("Process Name: ", h.Payload.ProcessName))
-	buffer.WriteString(fmt.Sprintln("Working Directory: ", h.Payload.Pwd))
-	buffer.WriteString(fmt.Sprintln("Pid: ", h.Payload.Pid))
-
-	if h.Payload.ObjectTraceEnabled {
-		buffer.WriteString("Object Trace Enabled\n")
-	} else {
-		buffer.WriteString("Object Trace Not Enabled\n")
-	}
-	return buffer.String()
 }
