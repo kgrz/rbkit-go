@@ -5,10 +5,10 @@ package hw
 type Handshake struct {
 	EventType int64
 	Timestamp float64
-	Payload   HandshakePayload
+	Payload   handshakePayload
 }
 
-type HandshakePayload struct {
+type handshakePayload struct {
 	ServerVersion       string `msg:"rbkit_server_version"`
 	ProtocolVersion     string `msg:"rbkit_protocol_version"`
 	ProcessName         string `msg:"process_name"`
