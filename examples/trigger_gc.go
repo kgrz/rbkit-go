@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kgrz/rbkit-go/unpack"
+	"github.com/kgrz/rbkit-go/hw"
 	"github.com/ugorji/go/codec"
 	"github.com/vaughan0/go-zmq"
 )
@@ -78,10 +78,9 @@ func main() {
 			}()
 		case err := <-chans.Errors():
 			checkError(err)
-		case parts := <-dataChans.In():
+		case _ = <-dataChans.In():
 			go func() {
 				fmt.Println("Got info")
-				processIncomingEvent(parts)
 			}()
 		case err := <-dataChans.Errors():
 			checkError(err)
@@ -99,17 +98,17 @@ func sendCommand(chans *zmq.Channels) {
 }
 
 func processIncomingMessage(parts [][]byte) {
-	var msg map[int]interface{}
 	joinedBytes := bytes.Join(parts, nil)
 
 	if len(joinedBytes) != 2 {
 		// This is a msgpack message
 		for _, part := range parts {
-			var dec *codec.Decoder = codec.NewDecoderBytes(part, &h)
-			err := dec.Decode(&msg)
+			unpacked := hw.Handshake{}
+
+			_, err := unpacked.UnmarshalMsg(part)
 			checkError(err)
-			unpacked := unpack.HandshakeEvt(msg)
-			fmt.Println(&unpacked)
+
+			fmt.Println(unpacked)
 		}
 	} else {
 		fmt.Println("received ", string(joinedBytes))
